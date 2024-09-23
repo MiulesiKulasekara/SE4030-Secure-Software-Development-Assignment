@@ -24,7 +24,7 @@ const getAllProducts = asyncHandler(async (req, res) => {
     const response = await axios.get(`http://product:7005/api/product/`);
     //Before sending the response.data to the client, response.data is sanitized to remove any malicious scripts or code
     //Prevent Cross-site Scripting (XSS)
-    res.send(response.data);
+    res.send(sanitizedData);
   } catch (error) {
     throw new Error(error);
   }
