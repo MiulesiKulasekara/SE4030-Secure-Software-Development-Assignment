@@ -2,6 +2,7 @@ import express from "express";
 import ProductController from "../controllers/ProductController.js";
 import UploadImages from "../middleware/uploadImages.js";
 import axios from "axios";
+import expressRateLimit from "express-rate-limit"
 
 const verifyToken = async (req, res, next) => {
     try {
@@ -21,6 +22,13 @@ const verifyToken = async (req, res, next) => {
     }
 };
 
+//Implement rate limiting to prevent denial-of-service (DoS) attacks, where an attacker could overload the server by making too many requests in a short period
+//Prevent Allocation of Resources Without Limits or Throttling
+const uploadLimit = expressRateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10, // Limit each IP to 10 requests per windowMs
+    message: "Too many upload requests from this IP, please try again later."
+});
 
 const router = express.Router();
 
@@ -29,6 +37,7 @@ router.put('/upload/:id',
     verifyToken,
     UploadImages.uploadPhoto.array('images', 10),
     UploadImages.productImgResize,
+    uploadLimit,
     ProductController.uploadImages
 );
 router.get('/:id', ProductController.getaProduct);
