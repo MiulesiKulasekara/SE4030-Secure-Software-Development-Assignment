@@ -112,7 +112,6 @@ const getAllProducts = asyncHandler(async (req, res) => {
 
         // sort products
         if (req.query.sort) {
-            // Validate if sort is a string
             if (typeof req.query.sort === 'string') {
                 const sortBy = req.query.sort.split(',').join(" ");
                 query = query.sort(sortBy);
@@ -123,9 +122,15 @@ const getAllProducts = asyncHandler(async (req, res) => {
             query = query.sort("-createdAt");
         }
 
+        // select specific fields
         if (req.query.fields) {
-            const fields = req.query.fields.split(',').join(" ");
-            query = query.select(fields);
+            // Validate if fields is a string
+            if (typeof req.query.fields === 'string') {
+                const fields = req.query.fields.split(',').join(" ");
+                query = query.select(fields);
+            } else {
+                throw new Error("Invalid fields parameter");
+            }
         } else {
             query = query.select("-__v");
         }
