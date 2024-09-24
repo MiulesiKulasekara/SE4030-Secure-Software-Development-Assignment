@@ -171,7 +171,8 @@ const rating = asyncHandler(async (req, res) => {
     }
 });
 
-// Create a rate limiter
+//Implement rate limiting to prevent denial-of-service (DoS) attacks, where an attacker could overload the server by making too many requests in a short period
+//Prevent Allocation of Resources Without Limits or Throttling
 const uploadLimiter = rateLimit({
     windowMs: 1 * 60 * 1000, // 1 minute
     max: 5, // Limit each IP to 5 requests per windowMs
