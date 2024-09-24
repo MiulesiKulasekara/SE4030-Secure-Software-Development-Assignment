@@ -4,6 +4,7 @@ import slugify from "slugify";
 import cloudinaryUploadImg from "../utils/cloudinary.js";
 import fs from 'fs';
 import axios from "axios";
+import expressRateLimit from "express-rate-limit";
 
 // function to add new product to the system
 const createProduct = asyncHandler(async (req, res) => {
@@ -170,6 +171,13 @@ const rating = asyncHandler(async (req, res) => {
     }
 });
 
+// Create a rate limiter
+const uploadLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000, // 1 minute
+    max: 5, // Limit each IP to 5 requests per windowMs
+    message: 'Too many upload requests from this IP, please try again later.'
+});
+
 // Upload images
 const uploadImages = asyncHandler(async (req, res) => {
     const { id } = req.params;
@@ -226,5 +234,6 @@ export default {
     deleteProduct,
     rating,
     uploadImages,
+    uploadLimiter,
     bulkUpdate
 }
