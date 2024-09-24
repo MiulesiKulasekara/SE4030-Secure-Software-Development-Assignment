@@ -13,26 +13,19 @@ import InputAdornment from "@mui/material/InputAdornment";
 import Button from "@mui/material/Button";
 import Alert from "@mui/material/Alert";
 import googleButton from "../assests/google-btn.png";
-
-const navigate = (url) => {
-  window.location.href = url;
-};
-
-const auth = async () => {
-  const response = await fetch("http://localhost:7002/api/user/google/login", {
-    method: "post",
-  });
-
-  const data = await response.json();
-  console.log(data);
-  navigate(data.url);
-};
+import { app } from "../firebase";
+import { GoogleAuthProvider, signInWithPopup, getAuth } from "firebase/auth";
+import { useNavigate } from "react-router-dom";
+import { useAuthContext } from "../hooks/useAuthContext";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const { login, error, isLoading } = useLogin();
   const [showPassword, setShowPassword] = useState(false);
+  const auth = getAuth(app);
+  const navigate = useNavigate();
+  const { dispatch } = useAuthContext();
 
   const handleClickShowPassword = () => setShowPassword((show) => !show);
 
@@ -41,6 +34,38 @@ const Login = () => {
     e.preventDefault();
     await login(email, password);
   };
+
+  //handleGoogleClick
+  const handleGoogleClick = async () => {
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+    try {
+      const resultsFromGoogle = await signInWithPopup(auth, provider);
+      console.log(resultsFromGoogle);
+      const res = await fetch("http://localhost:7002/api/user/google/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: resultsFromGoogle.user.displayName,
+          email: resultsFromGoogle.user.email,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        // Store user data in local storage
+        localStorage.setItem("user", JSON.stringify(data));
+
+        // Dispatch the login action to update context
+        dispatch({ type: "LOGIN", payload: data });
+
+        // Navigate to the protected page
+        navigate("/");
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
   return (
     <div className="container">
       <Box
@@ -130,7 +155,7 @@ const Login = () => {
             </Button>
           </Grid>
 
-          <Link className="btn-auth" type="button" onClick={() => auth()}>
+          <Link className="btn-auth" type="button" onClick={handleGoogleClick}>
             <img
               className="btn-auth-img"
               src={googleButton}
