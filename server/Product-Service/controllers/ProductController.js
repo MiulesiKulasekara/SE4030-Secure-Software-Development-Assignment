@@ -47,7 +47,56 @@ const getaProduct = asyncHandler(async (req, res) => {
     }
 });
 
-//function to get all products to home page
+// //function to get all products to home page
+// const getAllProducts = asyncHandler(async (req, res) => {
+//     try {
+//         // query products
+//         const queryObj = { ...req.query };
+//         const excludeFields = ['page', 'sort', 'limit', 'fields'];
+//         excludeFields.forEach(el => delete queryObj[el]);
+
+//         // filter by price
+//         let queryStr = JSON.stringify(queryObj);
+//         queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, match => `$${match}`);
+
+//         let query = Product.find(JSON.parse(queryStr));
+
+//         // sort products
+//         if (req.query.sort) {
+//             const sortBy = req.query.sort.split(',').join(" ");
+//             query = query.sort(sortBy);
+//         } else {
+//             query = query.sort("-createdAt");
+//         }
+
+//         if (req.query.fields) {
+//             const fields = req.query.fields.split(',').join(" ");
+//             query = query.select(fields);
+//         } else {
+//             query = query.select("-__v")
+//         }
+
+//         // pagination
+//         const page = req.query.page;
+//         const limit = req.query.limit;
+//         const skip = (page - 1) * limit;
+//         query = query.skip(skip).limit(limit);
+
+//         if (req.query.page) {
+//             const productCount = await Product.countDocuments();
+//             if (skip >= productCount) {
+//                 throw new Error("This Page does not exist");
+//             }
+//         }
+
+//         const products = await query;
+//         res.json(products);
+//     } catch (error) {
+//         throw new Error(error);
+//     }
+// });
+
+// function to get all products to home page
 const getAllProducts = asyncHandler(async (req, res) => {
     try {
         // query products
@@ -63,8 +112,13 @@ const getAllProducts = asyncHandler(async (req, res) => {
 
         // sort products
         if (req.query.sort) {
-            const sortBy = req.query.sort.split(',').join(" ");
-            query = query.sort(sortBy);
+            // Validate if sort is a string
+            if (typeof req.query.sort === 'string') {
+                const sortBy = req.query.sort.split(',').join(" ");
+                query = query.sort(sortBy);
+            } else {
+                throw new Error("Invalid sort parameter");
+            }
         } else {
             query = query.sort("-createdAt");
         }
@@ -73,12 +127,12 @@ const getAllProducts = asyncHandler(async (req, res) => {
             const fields = req.query.fields.split(',').join(" ");
             query = query.select(fields);
         } else {
-            query = query.select("-__v")
+            query = query.select("-__v");
         }
 
         // pagination
-        const page = req.query.page;
-        const limit = req.query.limit;
+        const page = req.query.page * 1 || 1; // convert page to number, default is 1
+        const limit = req.query.limit * 1 || 100; // default limit
         const skip = (page - 1) * limit;
         query = query.skip(skip).limit(limit);
 
@@ -92,9 +146,10 @@ const getAllProducts = asyncHandler(async (req, res) => {
         const products = await query;
         res.json(products);
     } catch (error) {
-        throw new Error(error);
+        res.status(400).json({ error: error.message });
     }
 });
+
 
 // function to update a product
 const updateProduct = asyncHandler(async (req, res) => {
