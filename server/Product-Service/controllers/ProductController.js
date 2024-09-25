@@ -5,7 +5,6 @@ import cloudinaryUploadImg from "../utils/cloudinary.js";
 import fs from 'fs';
 import axios from "axios";
 import rateLimit from "express-rate-limit";
-import Joi from "joi"; // For input validation
 
 // function to add new product to the system
 const createProduct = asyncHandler(async (req, res) => {
@@ -218,74 +217,26 @@ const uploadImages = asyncHandler(async (req, res) => {
     }
 });
 
-// const bulkUpdate = asyncHandler(async (req, res) => {
-//     const { updates } = req.body;
-
-//     try {
-
-//         updates.forEach((update) => {
-//             console.log(update.updateOne.filter._id)
-//             const { _id } = update.updateOne.filter._id
-//             const { quantity } = update.updateOne.update.$inc.quantity
-//             const { sold } = update.updateOne.update.$inc.sold
-//             Product.findByIdAndUpdate(_id, {
-//                 sold: sold,
-//                 quantity: quantity
-//             }).exec();
-//         });
-//         console.log("updated successfully")
-//     } catch (error) {
-//         console.log(error);
-//     }
-// })
-
-const updateSchema = Joi.object({
-    updates: Joi.array().items(
-        Joi.object({
-            updateOne: Joi.object({
-                filter: Joi.object({
-                    _id: Joi.string().required() // Validate the presence of _id as a string
-                }).required(),
-                update: Joi.object({
-                    $inc: Joi.object({
-                        quantity: Joi.number().required(),  // Ensure quantity is a number
-                        sold: Joi.number().required()      // Ensure sold is a number
-                    }).required()
-                }).required()
-            }).required()
-        })
-    ).required()
-});
-
-// Bulk update function with validation
 const bulkUpdate = asyncHandler(async (req, res) => {
-    const { error } = updateSchema.validate(req.body);  // Validate request body
-
-    if (error) {
-        return res.status(400).send({ error: error.details[0].message });  // Send validation error
-    }
-
     const { updates } = req.body;
 
     try {
-        updates.forEach(async (update) => {
-            const { _id } = update.updateOne.filter;
-            const { quantity, sold } = update.updateOne.update.$inc;
 
-            // Safely update the product in the database
-            await Product.findByIdAndUpdate(_id, {
-                $set: { sold: sold, quantity: quantity }
+        updates.forEach((update) => {
+            console.log(update.updateOne.filter._id)
+            const { _id } = update.updateOne.filter._id
+            const { quantity } = update.updateOne.update.$inc.quantity
+            const { sold } = update.updateOne.update.$inc.sold
+            Product.findByIdAndUpdate(_id, {
+                sold: sold,
+                quantity: quantity
             }).exec();
         });
-
-        console.log("Updated successfully");
-        res.status(200).send({ message: "Products updated successfully" });
+        console.log("updated successfully")
     } catch (error) {
-        console.error(error);
-        res.status(500).send({ error: "An error occurred during the update process" });
+        console.log(error);
     }
-});
-
+})
 
 export default {
     createProduct,
