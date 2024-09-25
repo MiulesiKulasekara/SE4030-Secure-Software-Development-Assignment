@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import morgan from "morgan";
 import ProductRoutes from "./routes/ProductRoutes.js";
 import cookieParser from "cookie-parser";
+import helmet from "helmet"; // Add Helmet for security
 
 dotenv.config();
 
@@ -20,6 +21,10 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(cors());
 app.use(cookieParser());
+app.use(helmet()); // Use Helmet for enhanced security
+
+// Disable X-Powered-By header to prevent information exposure
+app.disable('x-powered-by');
 
 app.use("/api/product", ProductRoutes);
 
