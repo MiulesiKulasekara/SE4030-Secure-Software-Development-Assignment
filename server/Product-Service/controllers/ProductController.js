@@ -5,6 +5,7 @@ import cloudinaryUploadImg from "../utils/cloudinary.js";
 import fs from 'fs';
 import axios from "axios";
 import rateLimit from "express-rate-limit";
+import Joi from "joi"; // For input validation
 
 // function to add new product to the system
 const createProduct = asyncHandler(async (req, res) => {
@@ -46,55 +47,6 @@ const getaProduct = asyncHandler(async (req, res) => {
         throw new Error(error);
     }
 });
-
-// //function to get all products to home page
-// const getAllProducts = asyncHandler(async (req, res) => {
-//     try {
-//         // query products
-//         const queryObj = { ...req.query };
-//         const excludeFields = ['page', 'sort', 'limit', 'fields'];
-//         excludeFields.forEach(el => delete queryObj[el]);
-
-//         // filter by price
-//         let queryStr = JSON.stringify(queryObj);
-//         queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, match => `$${match}`);
-
-//         let query = Product.find(JSON.parse(queryStr));
-
-//         // sort products
-//         if (req.query.sort) {
-//             const sortBy = req.query.sort.split(',').join(" ");
-//             query = query.sort(sortBy);
-//         } else {
-//             query = query.sort("-createdAt");
-//         }
-
-//         if (req.query.fields) {
-//             const fields = req.query.fields.split(',').join(" ");
-//             query = query.select(fields);
-//         } else {
-//             query = query.select("-__v")
-//         }
-
-//         // pagination
-//         const page = req.query.page;
-//         const limit = req.query.limit;
-//         const skip = (page - 1) * limit;
-//         query = query.skip(skip).limit(limit);
-
-//         if (req.query.page) {
-//             const productCount = await Product.countDocuments();
-//             if (skip >= productCount) {
-//                 throw new Error("This Page does not exist");
-//             }
-//         }
-
-//         const products = await query;
-//         res.json(products);
-//     } catch (error) {
-//         throw new Error(error);
-//     }
-// });
 
 // function to get all products to home page
 const getAllProducts = asyncHandler(async (req, res) => {
@@ -266,26 +218,74 @@ const uploadImages = asyncHandler(async (req, res) => {
     }
 });
 
+// const bulkUpdate = asyncHandler(async (req, res) => {
+//     const { updates } = req.body;
+
+//     try {
+
+//         updates.forEach((update) => {
+//             console.log(update.updateOne.filter._id)
+//             const { _id } = update.updateOne.filter._id
+//             const { quantity } = update.updateOne.update.$inc.quantity
+//             const { sold } = update.updateOne.update.$inc.sold
+//             Product.findByIdAndUpdate(_id, {
+//                 sold: sold,
+//                 quantity: quantity
+//             }).exec();
+//         });
+//         console.log("updated successfully")
+//     } catch (error) {
+//         console.log(error);
+//     }
+// })
+
+const updateSchema = Joi.object({
+    updates: Joi.array().items(
+        Joi.object({
+            updateOne: Joi.object({
+                filter: Joi.object({
+                    _id: Joi.string().required() // Validate the presence of _id as a string
+                }).required(),
+                update: Joi.object({
+                    $inc: Joi.object({
+                        quantity: Joi.number().required(),  // Ensure quantity is a number
+                        sold: Joi.number().required()      // Ensure sold is a number
+                    }).required()
+                }).required()
+            }).required()
+        })
+    ).required()
+});
+
+// Bulk update function with validation
 const bulkUpdate = asyncHandler(async (req, res) => {
+    const { error } = updateSchema.validate(req.body);  // Validate request body
+
+    if (error) {
+        return res.status(400).send({ error: error.details[0].message });  // Send validation error
+    }
+
     const { updates } = req.body;
 
     try {
+        updates.forEach(async (update) => {
+            const { _id } = update.updateOne.filter;
+            const { quantity, sold } = update.updateOne.update.$inc;
 
-        updates.forEach((update) => {
-            console.log(update.updateOne.filter._id)
-            const { _id } = update.updateOne.filter._id
-            const { quantity } = update.updateOne.update.$inc.quantity
-            const { sold } = update.updateOne.update.$inc.sold
-            Product.findByIdAndUpdate(_id, {
-                sold: sold,
-                quantity: quantity
+            // Safely update the product in the database
+            await Product.findByIdAndUpdate(_id, {
+                $set: { sold: sold, quantity: quantity }
             }).exec();
         });
-        console.log("updated successfully")
+
+        console.log("Updated successfully");
+        res.status(200).send({ message: "Products updated successfully" });
     } catch (error) {
-        console.log(error);
+        console.error(error);
+        res.status(500).send({ error: "An error occurred during the update process" });
     }
-})
+});
+
 
 export default {
     createProduct,
