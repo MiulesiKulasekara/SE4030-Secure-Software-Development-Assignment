@@ -26,7 +26,9 @@ https://github.com/Ravishka2000/AyurMart_E-Commerce.git
 https://github.com/MiulesiKulasekara/SE4030-Secure-Software-Development-Assignment.git
 
 
-## 🔗 Youtube Video of the demonstration
+## 🔗 YouTube video of the demonstration
+
+https://youtu.be/s2vQbDD7mec
 
 
 
