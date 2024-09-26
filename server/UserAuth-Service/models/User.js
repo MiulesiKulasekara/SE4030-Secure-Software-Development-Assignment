@@ -19,6 +19,7 @@ var userSchema = new mongoose.Schema({
     },
     mobile:{
         type:String,
+        default: "0112222777"
     },
     password:{
         type:String,
