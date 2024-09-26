@@ -8,6 +8,7 @@ import rateLimit from "express-rate-limit";
 import Joi from "joi"; // For input validation
 import sanitize from 'sanitize-filename';
 import { promisify } from 'util';
+import path from 'path';
 
 // Define Joi schema for validation
 const updateSchema = Joi.object({
@@ -229,50 +230,53 @@ const uploadLimiter = rateLimit({
 // Convert fs.unlink to a promise-based function for async usage
 const unlinkAsync = promisify(fs.unlink);
 
-// Upload images function
+// Upload Images
 const uploadImages = asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const { _id } = req.user;
+  const { id } = req.params;
+  try {
+      const uploader = (filePath) => cloudinaryUploadImg(filePath, "images");
 
-    try {
-        const uploader = (filePath) => cloudinaryUploadImg(filePath, "images");
-        const urls = [];
-        const files = req.files;
+      const urls = [];
+      const files = req.files;
+      for (const file of files) {
+          const { path: tempFilePath, filename } = file;
 
-        for (const file of files) {
-            const { path: filePath } = file;
+          // Sanitize the filename to prevent path manipulation
+          const sanitizedFilename = path.basename(filename);
 
-            // Sanitize the file name to avoid malicious paths
-            const sanitizedPath = sanitize(filePath);
-            
-            // Ensure the file is in the intended directory (e.g., uploads)
-            const uploadDir = path.resolve(__dirname, "../uploads");
-            const absoluteFilePath = path.resolve(uploadDir, sanitizedPath);
+          // Create a safe resolved path in the intended directory
+          const uploadsDir = path.resolve(path.join(__dirname, '../uploads/'));
+          const safeFilePath = path.join(uploadsDir, sanitizedFilename);
 
-            if (!absoluteFilePath.startsWith(uploadDir)) {
-                throw new Error("Invalid file path: Path traversal attempt detected.");
-            }
+          // Upload the image to Cloudinary
+          const newPath = await uploader(tempFilePath);
+          urls.push(newPath);
 
-            // Upload the file and store the URL
-            const newPath = await uploader(absoluteFilePath);
-            urls.push(newPath);
+          // Safely delete the file only if it's within the uploads directory
+          if (safeFilePath.startsWith(uploadsDir)) {
+              fs.unlink(safeFilePath, (err) => {
+                  if (err) {
+                      console.error(`Failed to delete file: ${safeFilePath}`, err);
+                  }
+              });
+          } else {
+              throw new Error('Attempted path traversal detected.');
+          }
+      }
 
-            // Safely delete the file after upload
-            await unlinkAsync(absoluteFilePath);
-        }
+      // Update the product with new image URLs
+      const findProduct = await Product.findByIdAndUpdate(
+          id,
+          {
+              images: urls.map((file) => file),
+          },
+          { new: true }
+      );
 
-        // Update the product with the new image URLs
-        const findProduct = await Product.findByIdAndUpdate(id, {
-            images: urls.map((file) => file)
-        }, {
-            new: true
-        });
-
-        res.json(findProduct);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: "An error occurred during file upload." });
-    }
+      res.json(findProduct);
+  } catch (error) {
+      throw new Error(error);
+  }
 });
 
 // Bulk update function with validation
